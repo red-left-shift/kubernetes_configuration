@@ -1,0 +1,21 @@
+{
+    "name": "cluster_manager",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "tal7aouy.indent-colorizer",
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "redhat.vscode-yaml"
+            ]
+        }
+    },
+    "mounts": [
+        "source=${localEnv:HOME}/.talos,target=/home/manager/.talos,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.kube,target=/home/manager/.kube,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.gitconfig,target=/home/manager/.gitconfig,type=bind,consistency=cached"
+    ],
+    "remoteUser": "manager"
+}

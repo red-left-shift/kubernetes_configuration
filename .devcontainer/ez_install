@@ -1,0 +1,157 @@
+#!/bin/bash 
+# Quick and dirty script for installing random programs from GitHub or URL
+#
+# The intention
+# - Making Dockerfile easier to read
+# - Making Dockerfile easier to maintain
+# - Keeping the Build specification in Dockerfile
+# - Abstracting repeated support functions into this script
+# - Maintaining clairity in error messages during build process
+#
+# If you have questions, harass Michael Henry.
+
+unset -v GITHUB
+unset -v ARCH
+unset -v URL
+unset -v EXTRACT
+unset -v INPUT
+unset -v OUTPUT
+unset -v PRESERVE
+unset -v DEBUG
+TMPDIR="/tmp/ez_install"
+
+usage() {
+	cat << EOL
+${0} (-g GITHUB REPO | -u URL) [-x PATH/FILE] (-o OUTFILE) [-h]
+
+	-g = Name of GitHub repo ( example: CycloneDX/cyclonedx-cli )
+	-a = Git "architecture" - for matching specific download
+	-u = Use specific URL for download
+	-x = Download is a tar archive
+	-i = Name of file being downloaded or extracted from archive
+	-o = Name of final executable file
+	-t = Temporary working directory (Default: ${TMPDIR})
+	-p = Preserve temporary working directory after exit
+	-d = Enable debugging
+	-h = Show this help dialog
+
+	Required options:
+	-g or -u
+	-a (when -g is specified)
+	-i 
+	-o
+
+EOL
+}
+
+while getopts g:a:u:i:o:t:hpxd flag ; do
+    case "${flag}" in
+        g ) GITHUB=${OPTARG};;
+	a ) ARCH=${OPTARG};;
+        u ) URL=${OPTARG};;
+        i ) INPUT=${OPTARG};;
+        o ) OUTPUT=${OPTARG};;
+	t ) TMPDIR=${OPTARG};;
+	x ) EXTRACT=1;;
+	p ) PRESERVE=1;;
+	d ) DEBUG=1 ;;
+	h ) usage
+	    exit 0 ;;
+	* ) usage 
+            exit 1 ;;
+    esac
+done
+
+error () {
+	echo ERROR: $1 >&2
+	exit 1
+}
+
+warn () {
+	echo WARN : $1 >&2
+}
+
+debug () {
+	if [[ -n $DEBUG ]] ; then
+		echo DEBUG: $1 >&2
+		while read line ; do
+			echo " -     ${line}" >&2
+		done
+	fi
+}
+
+
+
+mkdir -p $TMPDIR 	2>&1 | debug "Creating ${TMPDIR}..."
+cd $TMPDIR
+
+if [[ -z ${GITHUB} ]] && [[ -z ${URL} ]] ; then
+	usage
+	error "Either -g or -u must be specified"
+fi
+
+if [[ -n ${GITHUB} ]] ; then
+	if [[ -z ${ARCH} ]] ; then
+		error "Architecture must be specified (-a) when using github (-g)"
+	fi
+
+	GITURL="https://api.github.com/repos/${GITHUB}/releases/latest"
+
+	cd $TMPDIR
+	wget -qO github_api_output.json ${GITURL} 2>&1 | debug "Getting releases from GitHub at ${GITURL}..."
+	if [[ ${PIPESTATUS[0]} -gt 0 ]] ; then
+		error "Problem accessing github API."
+	fi
+
+	URL=$(grep browser_download_url github_api_output.json \
+		| grep "${ARCH}" \
+		| grep -viP '\.(asc|md5|sha1|sha256)\"' \
+		| head -n 1  \
+		| cut -d '"' -f 4 )
+
+	if [[ -z ${URL} ]] ; then
+		error "No GitHub release download found at ${GITURL}"
+	fi
+fi
+
+if [[ -z $OUTPUT ]] ; then
+	error "Output -o must be specified"
+fi
+
+if [[ -z ${INPUT} ]] ; then
+	INPUT=$(basename ${OUTPUT})
+fi
+
+if [[ -n ${URL} ]] ; then
+	cd $TMPDIR
+	if [[ -n ${EXTRACT} ]] ; then
+		INFILE=$(basename ${INPUT})
+		wget -qO tmp_file.tgz ${URL} 	2>&1 | debug "Downloading file..."
+		tar -xzvf tmp_file.tgz ${INPUT} 2>&1 | debug "Extracting file..."
+		chmod 755 ${INFILE} 		2>&1 | debug "Changing permissions..."
+		mv ${INFILE} ${OUTPUT}		2>&1 | debug "Moving to final destination..."
+	else
+		wget -qO ${INPUT} ${URL}	2>&1 | debug "Downloading file..."
+		chmod 755 ${INPUT}		2>&1 | debug "Changing permissions..."
+		mv ${INPUT} ${OUTPUT}		2>&1 | debug "Moving to final destination..."
+	fi
+else
+	error "No download URL provided or available via GitHub releases."
+fi
+
+if ! [[ -f ${OUTPUT} ]] ; then
+	error "${OUTPUT} failed to install"
+fi
+
+if [[ -z ${PRESERVE} ]] ; then
+	rm -rf ${TMPDIR} 			2>&1 | debug "Deleting ${TMPDIR}..."
+else 
+	true | debug "Preserving ${TMPDIR}"
+fi
+
+exit 0
+
+# ./ez_install.sh -g CycloneDX/cyclonedx-cli -a linux-x64 -o cyclonedx-cli
+# ./ez_install.sh -g CycloneDX/sbom-utility -a linux-amd64 -o sbom-utility
+# ./ez_install.sh -g xeol-io/xeol -a linux_amd64 -o xeol
+
