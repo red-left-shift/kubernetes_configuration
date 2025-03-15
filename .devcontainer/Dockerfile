@@ -12,6 +12,8 @@ RUN apk add --no-cache \
     helm \
     k9s \
     kubectl \
+    openssh-client-common \
+    openssh-keygen \
     shadow \
     sudo
 
