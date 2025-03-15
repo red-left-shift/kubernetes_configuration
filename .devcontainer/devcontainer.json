@@ -13,9 +13,14 @@
         }
     },
     "mounts": [
+        "source=${localEnv:HOME}/.ssh,target=/home/manager/.ssh,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.talos,target=/home/manager/.talos,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.kube,target=/home/manager/.kube,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.gitconfig,target=/home/manager/.gitconfig,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.gitconfig,target=/home/manager/.gitconfig,type=bind,consistency=cached",
+        "source=${localEnv:SSH_AUTH_SOCK},target=/home/manager/.ssh_auth,type=bind,consistency=cached"
     ],
+    "containerEnv": {
+        "SSH_AUTH_SOCK": "/home/manager/.ssh_auth"
+    },
     "remoteUser": "manager"
 }
