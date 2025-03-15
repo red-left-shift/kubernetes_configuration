@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     k9s \
     kubectl \
     openssh-client-common \
+    openssh-client-default \
     openssh-keygen \
     shadow \
     sudo
