@@ -25,7 +25,7 @@ RUN /usr/local/bin/ez_install \
     -o /usr/local/bin/talosctl
 
 RUN	groupadd --gid $USER_GID $USERNAME \
-	&&	useradd -s /bin/bash --uid $USER_UID --gid $USERNAME -m $USERNAME \
-	&&	echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME
+    &&	useradd -s /bin/bash --uid $USER_UID --gid $USERNAME -m $USERNAME \
+    &&	echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME
 
 USER manager
